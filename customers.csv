@@ -1,0 +1,11 @@
+customer_id,name,age,region,employment_type,monthly_income
+CUST001,Customer 1,45,North,Salaried,61048
+CUST002,Customer 2,32,South,Salaried,38434
+CUST003,Customer 3,46,North,Self-Employed,29165
+CUST004,Customer 4,25,North,Salaried,55495
+CUST005,Customer 5,41,North,Salaried,96426
+CUST006,Customer 6,38,South,Self-Employed,61463
+CUST007,Customer 7,50,North,Salaried,80392
+CUST008,Customer 8,35,East,Salaried,53221
+CUST009,Customer 9,55,East,Salaried,37156
+CUST010,Customer 10,37,North,Self-Employed,70082
