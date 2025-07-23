@@ -1,0 +1,173 @@
+from google.colab import files
+uploaded = files.upload()
+
+
+import pandas as pd
+
+loans = pd.read_csv('loans.csv')
+customers = pd.read_csv('customers.csv')
+repayments = pd.read_csv('repayments.csv')
+import sqlite3
+
+# Create or connect to file-based DB
+conn = sqlite3.connect('loan_analytics.db')
+
+# Store DataFrames as tables in DB
+loans.to_sql('loans', conn, if_exists='replace', index=False)
+customers.to_sql('customers', conn, if_exists='replace', index=False)
+repayments.to_sql('repayments', conn, if_exists='replace', index=False)
+
+print("All CSVs loaded into 'loan_analytics.db'")
+
+# Run SQL query
+loan_query = "SELECT * FROM loans"
+customer_query="Select * from customers"
+repayments_query="Select * from repayments"
+loan_result = pd.read_sql_query(loan_query, conn)
+customer_result = pd.read_sql_query(customer_query, conn)
+repayments_result = pd.read_sql_query(repayments_query, conn)
+loan_result,customer_result,repayments_result
+
+
+
+import pandas as pd
+import sqlite3
+
+# Make sure your SQLite connection is active
+conn = sqlite3.connect('loan_analytics.db')
+
+# 1. Total number of loans
+total_loans_df = pd.read_sql_query("""
+    SELECT COUNT(*) AS total_loans FROM loans;
+""", conn)
+
+# 2. Total loan disbursed
+total_disbursed_df = pd.read_sql_query("""
+    SELECT SUM(loan_amount) AS total_disbursed FROM loans;
+""", conn)
+
+# 3. Average loan amount
+avg_loan_amount_df = pd.read_sql_query("""
+    SELECT AVG(loan_amount) AS avg_loan_amount FROM loans;
+""", conn)
+
+# 4. Average interest rate
+avg_interest_rate_df = pd.read_sql_query("""
+    SELECT AVG(interest_rate) AS avg_interest_rate FROM loans;
+""", conn)
+
+# 5. Total repayments received
+total_repaid_df = pd.read_sql_query("""
+    SELECT SUM(amount_paid) AS total_repaid FROM repayments;
+""", conn)
+
+# 6. Outstanding amount per loan
+outstanding_df = pd.read_sql_query("""
+    SELECT
+        l.loan_id,
+        l.customer_id,
+        l.loan_amount,
+        (SELECT SUM(r.amount_paid) FROM repayments r WHERE r.loan_id = l.loan_id) AS total_paid,
+        l.loan_amount - IFNULL((SELECT SUM(r.amount_paid) FROM repayments r WHERE r.loan_id = l.loan_id), 0) AS outstanding_amount
+    FROM loans l;
+""", conn)
+
+# 7. Fully paid loans
+fully_paid_df = pd.read_sql_query("""
+    SELECT loan_id
+    FROM loans
+    WHERE loan_amount <= IFNULL((SELECT SUM(amount_paid) FROM repayments WHERE loan_id = loans.loan_id), 0);
+""", conn)
+
+# 8. Defaulters (due before today & not fully paid)
+defaulters_df = pd.read_sql_query("""
+    SELECT
+        loan_id,
+        customer_id,
+        loan_amount,
+        disbursement_date,
+        IFNULL((SELECT SUM(amount_paid) FROM repayments WHERE loan_id = loans.loan_id), 0) AS total_paid,
+        loan_amount - IFNULL((SELECT SUM(amount_paid) FROM repayments WHERE loan_id = loans.loan_id), 0) AS remaining_due
+    FROM loans
+    WHERE disbursement_date< DATE('now')
+      AND loan_amount > IFNULL((SELECT SUM(amount_paid) FROM repayments WHERE loan_id = loans.loan_id), 0);
+""", conn)
+
+# 9. Monthly loan disbursement trend
+monthly_loans_df = pd.read_sql_query("""
+    SELECT
+        strftime('%Y-%m', disbursement_date) AS month,
+        COUNT(*) AS loans_disbursed,
+        SUM(loan_amount) AS total_disbursed
+    FROM loans
+    GROUP BY month;
+""", conn)
+
+# 10. Monthly repayment trend
+monthly_repayments_df = pd.read_sql_query("""
+    SELECT
+        strftime('%Y-%m', repayment_date) AS month,
+        COUNT(*) AS payments_made,
+        SUM(amount_paid) AS total_paid
+    FROM repayments
+    GROUP BY month;
+""", conn)
+print("🔹 Total Loans:")
+print(total_loans_df)
+
+print("\n🔹 Total Loan Disbursed:")
+print(total_disbursed_df)
+
+print("\n🔹 Average Loan Amount:")
+print(avg_loan_amount_df)
+
+print("\n🔹 Average Interest Rate:")
+print(avg_interest_rate_df)
+
+print("\n🔹 Total Repaid Amount:")
+print(total_repaid_df)
+
+print("\n🔹 Outstanding Amount per Loan:")
+print(outstanding_df.head(10))  # Show only top 10 for brevity
+
+print("\n🔹 Fully Paid Loans:")
+print(fully_paid_df)
+
+print("\n🔹 Defaulters:")
+print(defaulters_df)
+
+print("\n🔹 Monthly Loan Disbursement Trend:")
+print(monthly_loans_df)
+
+print("\n🔹 Monthly Repayment Trend:")
+print(monthly_repayments_df)
+
+
+def safe_value(df, default=0):
+    return df.iloc[0, 0] if not df.empty else default
+
+kpis = [
+    ("Total Loans", safe_value(total_loans_df)),
+    ("Total Loan Disbursed", safe_value(total_disbursed_df)),
+    ("Average Loan Amount", safe_value(avg_loan_amount_df)),
+    ("Average Interest Rate", safe_value(avg_interest_rate_df)),
+    ("Total Repaid Amount", safe_value(total_repaid_df)),
+    ("Fully Paid Loans", safe_value(fully_paid_df)),  # this line caused error
+    ("Outstanding Amount (Sample 1st)", safe_value(outstanding_df)),
+    ("Monthly Loan Disbursement Rows", len(monthly_loans_df)),
+    ("Monthly Repayment Rows", len(monthly_repayments_df)),
+    ("Defaulters Count", len(defaulters_df)),
+]
+
+kpi_df = pd.DataFrame(kpis, columns=["KPI", "Value"])
+kpi_df.to_excel("loan_kpi_output.xlsx", index=False)
+
+print("✅ KPI results saved to loan_kpi_output.xlsx")
+
+
+
+# Install G
+
+# Clone your GitHub repo
+#!git clone https://github.com/shriramvishnu17133/loan-analytics-project.git
+
